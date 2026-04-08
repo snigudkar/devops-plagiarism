@@ -1,0 +1,119 @@
+# Compiled files
+*.class
+target/
+*.jar
+*.war
+*.ear
+*.log
+
+# IDE files
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+.metadata
+*.code-workspace
+
+# Eclipse
+bin/
+.settings/
+.metadata
+.classpath
+.project
+
+# IntelliJ
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# NetBeans
+nb-configuration.xml
+nbactions.xml
+nb-dist.xml
+nbproject/
+
+# VS Code
+.vscode/
+.history/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Application specific
+storage/
+!storage/.gitkeep
+logs/
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# Environment files
+.env
+application-local.yml
+application-dev.yml
+application-prod.yml
+*.properties.local
+
+# Test reports
+test-reports/
+*.trx
+*.coverage
+*.coverage.xml
+*.testresult
+
+# Database
+*.db
+*.sqlite
+
+# Docker
+*.pid
+docker/data/
+docker/*.pid
+
+# Backup files
+backups/
+*.bak
+*.swp
+*.swo
+*~
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# JPlag
+jplag/jplag.jar
+!jplag/.gitkeep
+
+# Temp files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Certificates
+*.p12
+*.jks
+*.pem
+*.crt
+*.key
