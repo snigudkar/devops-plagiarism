@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6-jammy
+    container_name: plagiarism-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: plagiarism_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - plagiarism-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: plagiarism-mongo-express
+    restart: unless-stopped
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: admin123
+      ME_CONFIG_MONGODB_URL: mongodb://admin:admin123@mongodb:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
+    ports:
+      - "8081:8081"
+    networks:
+      - plagiarism-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: plagiarism-app
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: 27017
+      MONGODB_DATABASE: plagiarism_db
+      MONGODB_USERNAME: plagiarism_user
+      MONGODB_PASSWORD: plagiarism_pass
+      JWT_SECRET: ${JWT_SECRET:-mySuperSecretKeyForJWTTokenGenerationWithAtLeast32Chars}
+      STORAGE_PATH: /app/storage
+      JPLAG_PATH: /app/jplag/jplag.jar
+    ports:
+      - "8080:8080"
+    volumes:
+      - app_storage:/app/storage
+      - app_logs:/app/logs
+    networks:
+      - plagiarism-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: plagiarism-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    networks:
+      - plagiarism-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: plagiarism-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - plagiarism-network
+    depends_on:
+      - prometheus
+
+networks:
+  plagiarism-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  app_storage:
+  app_logs:
+  prometheus_data:
+  grafana_data:
