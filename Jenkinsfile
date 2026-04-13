@@ -1,0 +1,95 @@
+pipeline {
+    agent any
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timestamps()
+        timeout(time: 30, unit: 'MINUTES')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '==== Checking out source code ===='
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo '==== Building application ===='
+                sh 'mvn clean install -DskipTests'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo '==== Running unit tests ===='
+                sh 'mvn test'
+            }
+        }
+
+        stage('Code Quality Analysis') {
+            steps {
+                echo '==== Running SonarQube analysis ===='
+                // Uncomment when SonarQube is configured
+                // sh 'mvn clean verify sonar:sonar -Dsonar.projectKey=auth-module'
+            }
+        }
+
+        stage('Package') {
+            steps {
+                echo '==== Packaging application ===='
+                sh 'mvn package -DskipTests'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                echo '==== Building Docker image ===='
+                script {
+                    sh 'docker build -t auth-module:${BUILD_NUMBER} .'
+                    sh 'docker tag auth-module:${BUILD_NUMBER} auth-module:latest'
+                }
+            }
+        }
+
+        stage('Deploy to Dev') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                echo '==== Deploying to Dev environment ===='
+                script {
+                    sh 'docker run -d --name auth-module-dev-${BUILD_NUMBER} -p 8080:8080 -e SPRING_PROFILES_ACTIVE=dev auth-module:${BUILD_NUMBER}'
+                }
+            }
+        }
+
+        stage('Deploy to Prod') {
+            when {
+                branch 'main'
+            }
+            steps {
+                echo '==== Deploying to Production environment ===='
+                script {
+                    sh 'docker run -d --name auth-module-prod-${BUILD_NUMBER} -p 8080:8080 -e SPRING_PROFILES_ACTIVE=prod auth-module:${BUILD_NUMBER}'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo '==== Running post-build tasks ===='
+            junit 'target/surefire-reports/*.xml'
+            cleanWs()
+        }
+        success {
+            echo '==== Pipeline executed successfully ===='
+        }
+        failure {
+            echo '==== Pipeline failed ===='
+        }
+    }
+}
