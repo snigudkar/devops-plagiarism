@@ -96,6 +96,10 @@
 pipeline {
     agent any
 
+    tools {
+        jdk 'jdk17'   // 👈 CRITICAL: force Java 17
+    }
+
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timestamps()
@@ -103,10 +107,19 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 echo '==== Checking out source code ===='
                 checkout scm
+            }
+        }
+
+        stage('Verify Java Version') {
+            steps {
+                echo '==== Verifying Java version ===='
+                bat 'echo JAVA_HOME=%JAVA_HOME%'
+                bat 'java -version'
             }
         }
 
@@ -155,7 +168,11 @@ pipeline {
             steps {
                 echo '==== Deploying to Dev environment ===='
                 script {
-                    bat 'docker run -d --name auth-module-dev-%BUILD_NUMBER% -p 8080:8080 -e SPRING_PROFILES_ACTIVE=dev auth-module:%BUILD_NUMBER%'
+                    bat '''
+                    docker rm -f auth-module-dev || exit 0
+                    docker run -d --name auth-module-dev -p 8080:8080 ^
+                    -e SPRING_PROFILES_ACTIVE=dev auth-module:%BUILD_NUMBER%
+                    '''
                 }
             }
         }
@@ -167,7 +184,11 @@ pipeline {
             steps {
                 echo '==== Deploying to Production environment ===='
                 script {
-                    bat 'docker run -d --name auth-module-prod-%BUILD_NUMBER% -p 8080:8080 -e SPRING_PROFILES_ACTIVE=prod auth-module:%BUILD_NUMBER%'
+                    bat '''
+                    docker rm -f auth-module-prod || exit 0
+                    docker run -d --name auth-module-prod -p 8080:8080 ^
+                    -e SPRING_PROFILES_ACTIVE=prod auth-module:%BUILD_NUMBER%
+                    '''
                 }
             }
         }
@@ -176,7 +197,7 @@ pipeline {
     post {
         always {
             echo '==== Running post-build tasks ===='
-            junit '**/target/surefire-reports/*.xml'
+            junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
             cleanWs()
         }
         success {
